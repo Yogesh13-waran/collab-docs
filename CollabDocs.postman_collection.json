@@ -1,0 +1,583 @@
+{
+  "info": {
+    "_postman_id": "b8109bf5-28e4-41da-a75e-503c407c8c88",
+    "name": "CollabDocs API Collection",
+    "description": "Comprehensive Postman collection for CollabDocs backend API. Covers all 17+ endpoints organized into the 6 required folders: Users, Workspaces, Documents, Comments, Tags, and Audit Logs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://127.0.0.1:8000/api",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "workspaceId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "documentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "commentId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "tagId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "auditLogId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Users",
+      "description": "Endpoints for User management",
+      "item": [
+        {
+          "name": "1.1 List Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ""]
+            },
+            "description": "Returns a paginated list of registered users."
+          },
+          "response": []
+        },
+        {
+          "name": "1.2 Create User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.id) {",
+                  "    pm.collectionVariables.set('userId', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"johndoe\",\n  \"email\": \"john.doe@example.com\",\n  \"first_name\": \"John\",\n  \"last_name\": \"Doe\",\n  \"password\": \"StrongPassword123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/users/",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", ""]
+            },
+            "description": "Creates a new User with UUID primary key."
+          },
+          "response": []
+        },
+        {
+          "name": "1.3 Retrieve User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", ""]
+            },
+            "description": "Retrieves user details by UUID primary key."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Workspaces",
+      "description": "Endpoints for Workspace creation, listing, collaboration, and stats",
+      "item": [
+        {
+          "name": "2.1 List Workspaces (with Lookups)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/?is_active=true&name=Engineering",
+              "host": ["{{baseUrl}}"],
+              "path": ["workspaces", ""],
+              "query": [
+                {
+                  "key": "is_active",
+                  "value": "true"
+                },
+                {
+                  "key": "name",
+                  "value": "Engineering"
+                }
+              ]
+            },
+            "description": "List workspaces with lookups (is_active, name__icontains) and select_related('owner')."
+          },
+          "response": []
+        },
+        {
+          "name": "2.2 Create Workspace (Atomic Owner Member)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.id) {",
+                  "    pm.collectionVariables.set('workspaceId', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Engineering Workspace\",\n  \"description\": \"Workspace for backend and system architecture\",\n  \"owner_id\": \"{{userId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/",
+              "host": ["{{baseUrl}}"],
+              "path": ["workspaces", ""]
+            },
+            "description": "Section 2.2 & 4.4: Workspace creation wrapped in transaction.atomic(). Automatically adds owner as WorkspaceMember with role=admin."
+          },
+          "response": []
+        },
+        {
+          "name": "2.3 Retrieve Workspace by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["workspaces", "{{workspaceId}}", ""]
+            },
+            "description": "Retrieves workspace with nested owner details, members, and dynamic members_count SerializerMethodField."
+          },
+          "response": []
+        },
+        {
+          "name": "2.4 Add Member to Workspace",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"user_id\": \"{{userId}}\",\n  \"role\": \"editor\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/members/",
+              "host": ["{{baseUrl}}"],
+              "path": ["workspaces", "{{workspaceId}}", "members", ""]
+            },
+            "description": "Section 4.4: Adds member to workspace. Returns 201 on success. If member is already present, catches IntegrityError and returns 409 Conflict."
+          },
+          "response": []
+        },
+        {
+          "name": "2.5 Workspace Stats (Aggregation)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/workspaces/{{workspaceId}}/stats/",
+              "host": ["{{baseUrl}}"],
+              "path": ["workspaces", "{{workspaceId}}", "stats", ""]
+            },
+            "description": "Section 4.3: Aggregates document counts and active member list using aggregate() and values_list()."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Documents",
+      "description": "Endpoints for Document authoring, versioning, search, and metrics",
+      "item": [
+        {
+          "name": "3.1 List Documents (Q OR Search & Lookups)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/documents/?search=Architecture&status__in=draft,review",
+              "host": ["{{baseUrl}}"],
+              "path": ["documents", ""],
+              "query": [
+                {
+                  "key": "search",
+                  "value": "Architecture"
+                },
+                {
+                  "key": "status__in",
+                  "value": "draft,review"
+                }
+              ]
+            },
+            "description": "Section 4.3: Demonstrates Q objects for OR filtering across title and content, plus status__in lookups."
+          },
+          "response": []
+        },
+        {
+          "name": "3.2 Create Document (Atomic Version 1 + Signal)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.id) {",
+                  "    pm.collectionVariables.set('documentId', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"created_by_id\": \"{{userId}}\",\n  \"title\": \"Architecture Guidelines\",\n  \"content\": \"System overview and best practices for CollabDocs backend.\",\n  \"status\": \"draft\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/documents/",
+              "host": ["{{baseUrl}}"],
+              "path": ["documents", ""]
+            },
+            "description": "Section 2.1 & 4.4: Wrapped in transaction.atomic(). Automatically creates DocumentVersion with version_number=1 and triggers post_save signal creating AuditLog."
+          },
+          "response": []
+        },
+        {
+          "name": "3.3 Retrieve Document by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/documents/{{documentId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["documents", "{{documentId}}", ""]
+            },
+            "description": "Retrieves document with nested workspace name, creator details, versions_count, and comments_count."
+          },
+          "response": []
+        },
+        {
+          "name": "3.4 Update Document (Atomic Version N+1 + Signal)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"workspace_id\": \"{{workspaceId}}\",\n  \"title\": \"Architecture Guidelines v2\",\n  \"content\": \"Revised system architecture with high availability clustering.\",\n  \"status\": \"review\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/documents/{{documentId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["documents", "{{documentId}}", ""]
+            },
+            "description": "Section 2.1 & 4.4: Every save creates a new DocumentVersion inside the same transaction.atomic() with version_number = versions.count() + 1."
+          },
+          "response": []
+        },
+        {
+          "name": "3.5 Document Version History",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/documents/{{documentId}}/versions/",
+              "host": ["{{baseUrl}}"],
+              "path": ["documents", "{{documentId}}", "versions", ""]
+            },
+            "description": "Section 4.2 @action: Returns full version history for this document ordered by -version_number."
+          },
+          "response": []
+        },
+        {
+          "name": "3.6 Document Summary Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/documents/{{documentId}}/summary/",
+              "host": ["{{baseUrl}}"],
+              "path": ["documents", "{{documentId}}", "summary", ""]
+            },
+            "description": "Section 4.2 & 4.3: Summary endpoint returning word count, character count, and Count aggregations."
+          },
+          "response": []
+        },
+        {
+          "name": "3.7 Add / Manage Document Tags",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tags\": [\"backend\", \"database\", \"performance\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/documents/{{documentId}}/tags/",
+              "host": ["{{baseUrl}}"],
+              "path": ["documents", "{{documentId}}", "tags", ""]
+            },
+            "description": "Section 2.1 & 4.3: Adds tags to document using ManyToManyField and inspects tag IDs via values_list()."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Comments",
+      "description": "Endpoints for Threaded Document Comments",
+      "item": [
+        {
+          "name": "4.1 List Comments (Filter by Document)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/comments/?document={{documentId}}&top_level=true",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", ""],
+              "query": [
+                {
+                  "key": "document",
+                  "value": "{{documentId}}"
+                },
+                {
+                  "key": "top_level",
+                  "value": "true"
+                }
+              ]
+            },
+            "description": "Section 4.3: Lists comments using select_related('author', 'document', 'parent') with optional top_level filter."
+          },
+          "response": []
+        },
+        {
+          "name": "4.2 Create Top-Level Comment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.id) {",
+                  "    pm.collectionVariables.set('commentId', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"document_id\": \"{{documentId}}\",\n  \"author_id\": \"{{userId}}\",\n  \"content\": \"Great architecture overview! Have we benchmarked database read replicas?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/comments/",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", ""]
+            },
+            "description": "Creates a top-level comment (parent is null)."
+          },
+          "response": []
+        },
+        {
+          "name": "4.3 Reply to Existing Comment (Threaded)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"document_id\": \"{{documentId}}\",\n  \"author_id\": \"{{userId}}\",\n  \"parent_id\": \"{{commentId}}\",\n  \"content\": \"Yes, read replicas reduce primary node load by 65%.\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/comments/",
+              "host": ["{{baseUrl}}"],
+              "path": ["comments", ""]
+            },
+            "description": "Section 2.1: Self-referential FK parent creates a threaded reply."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Tags",
+      "description": "Endpoints for Tag taxonomy",
+      "item": [
+        {
+          "name": "5.1 List Tags (with Document Count Annotation)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/tags/",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", ""]
+            },
+            "description": "Section 4.3: Uses annotate(document_count=Count('documents')) to display usage statistics."
+          },
+          "response": []
+        },
+        {
+          "name": "5.2 Create Tag",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "var jsonData = pm.response.json();",
+                  "if (jsonData.id) {",
+                  "    pm.collectionVariables.set('tagId', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"microservices\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/tags/",
+              "host": ["{{baseUrl}}"],
+              "path": ["tags", ""]
+            },
+            "description": "Creates a new Tag with unique name validation."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "6. Audit Logs",
+      "description": "Endpoints for viewing system and document lifecycle Audit Logs",
+      "item": [
+        {
+          "name": "6.1 List Audit Logs (Filter by Action & Model)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs/?model_name=Document&action=created",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit-logs", ""],
+              "query": [
+                {
+                  "key": "model_name",
+                  "value": "Document"
+                },
+                {
+                  "key": "action",
+                  "value": "created"
+                }
+              ]
+            },
+            "description": "Section 4.5: Lists audit logs generated automatically by post_save signal with select_related('actor')."
+          },
+          "response": []
+        },
+        {
+          "name": "6.2 Retrieve Audit Log by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs/{{auditLogId}}/",
+              "host": ["{{baseUrl}}"],
+              "path": ["audit-logs", "{{auditLogId}}", ""]
+            },
+            "description": "Retrieves audit log entry details including actor, model_name, object_id, and metadata."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
+
